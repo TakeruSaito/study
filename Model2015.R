@@ -222,7 +222,7 @@ StepFourMulti <- function(data, TriAlfa, kaiki){
   }
 
   FactMulCoeff <- FactMulCoeff[-1]
-
+  
   sig <- matrix(FactMulCoeff, length(data[,1]), (length(data[1,]) - 4))
 
   sigma <- 0
@@ -234,6 +234,7 @@ StepFourMulti <- function(data, TriAlfa, kaiki){
   rightFormula <- TriAlfa[2] * data$FPTrial * sigma
 
   x <- data.frame(LEFT=leftFormula, RIGHT=rightFormula);
+  
   return( invisible(lm(leftFormula?rightFormula, data=x)$coeff ))
 
 }
@@ -316,6 +317,8 @@ StepFiveMulti <- function(pbl, checkData){ # pbl:ŒŸ¸‘ÎÛƒvƒƒWƒFƒNƒgíœÏ‚Ý‚©‚
   ret <- TriAlfa[2] * checkData$FPTrial * (1 + predict[2] * sigma)
   ret <- abs(ret)
   ret <- c(ret, checkData$Actual, ret - checkData$Actual, TriAlfa[2], checkData$FPTrial, predict[2], sigma)
+  
+
   return(invisible(ret)) 
 }
 
@@ -419,7 +422,7 @@ MakeModel <- function(PBL){
   multico <- Multico(SortedData) #‘½düŒ`«‚ð”rœ‚·‚é
   
 #  write.table(ChoiceCoeff, file = "output.txt", append = TRUE, quote = FALSE);
- write.csv(ChoiceCoeff, file = "SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
+ write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
   
   MeanRes <- 0
   MedianRes <- 0
@@ -474,7 +477,7 @@ CalcManHour <- function(PBL,i){
   names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
   AandB <- 0
   AandB <- rbind(AandB, ret)
-  write.table(AandB[-1,], file = "SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
+  write.table(AandB[-1,], file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
   
 options(scipen=5);return (ret[3]  - error)
 #  return(ret[,3] - error)
