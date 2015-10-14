@@ -74,12 +74,23 @@ Multico <- function(AllFact){
   data <- buffer
 
   vect <- 0
-  for(i in 5:(length(data)-1) ){
-    for(j in (i + 1):length(data) ){
-      x <- abs( cor(data[,i] , data[,j]) );
-      if(is.na(x) || x >= 0.8){
-        vect <- rbind(vect, c(i,j));
+  for(i in 5:(length(data)-5) ){
+#    for(j in (i + 1):(length(data) - 1) ){
+    j <- (i + 1);print("loop")
+    while(j <= length(data)){
+#      x <- abs( cor(data[,i] , data[,j]) );
+      if(length(data) < (j + 4) ){
+        x <- vif(lm(data[,i] ? ., data[,j:length(data)]));print("end")
+      }else{
+        x <- vif(lm(data[,i] ? ., data[,j:(j+4)]));print("middle")
       }
+      print(x)
+      for(k in 1:length(x)){
+        if(is.na(x[k]) || x[k] >= 10){
+          vect <- rbind(vect, c(i,(j + 1)))
+        }
+      }
+      j <- j + 5
     }
   }
   
