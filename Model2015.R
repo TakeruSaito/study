@@ -53,8 +53,8 @@ StepTwo <- function(AllFact){
 
 #計算用に、ソートされたデータのうちいらない分を削除するように修正したStepTwo
 Multico <- function(AllFact){
-
-  data <- AllFact  #このAllFactは工数・規模を除いた、全調整要因
+  library("car", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
+  data <- AllFact  #このAllFactは全調整要因
 
   data[is.na(data)] <- 0
   buffer <- data
@@ -74,27 +74,30 @@ Multico <- function(AllFact){
   data <- buffer
 
   vect <- 0
-  for(i in 5:(length(data)-5) ){
+  for(i in 5:(length(data) - 3) ){
 #    for(j in (i + 1):(length(data) - 1) ){
-    j <- (i + 1);print("loop")
-    while(j <= length(data)){
+    x <- 0
+    loop <- floor( (length(data) - i)/3 )
+
+    for(j in 1:loop ){
 #      x <- abs( cor(data[,i] , data[,j]) );
-      if(length(data) < (j + 4) ){
-        x <- vif(lm(data[,i] ? ., data[,j:length(data)]));print("end")
+      if(j >= loop){
+        x <- c(x,  vif( lm( data[,i] ? . , data[, (i + (3*j - 2)):length(data)] ) ) )
       }else{
-        x <- vif(lm(data[,i] ? ., data[,j:(j+4)]));print("middle")
+        x <- c(x,  vif( lm( data[,i] ? . , data[, i + (3*j - 2):(3*j) ] ) ) )
       }
-      print(x)
-      for(k in 1:length(x)){
-        if(is.na(x[k]) || x[k] >= 10){
-          vect <- rbind(vect, c(i,(j + 1)))
-        }
+    }
+    x <- x[-1]
+    
+    for(k in 1:length(x)){
+      if(is.na(x[k]) || x[k] >= 10){
+        vect <- rbind(vect, c(i,(j + k -1)))
       }
-      j <- j + 5
     }
   }
   
-  if(length(vect) != 0){
+  
+  if(length(vect) >= 2 ){
     vname <- 0;  
     for(i in 2:length(vect[1,])){
       data[,vect[i,2]] <- 0 
