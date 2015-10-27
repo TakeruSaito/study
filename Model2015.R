@@ -72,7 +72,9 @@ Multico <- function(AllFact){
     }
   }
   data <- buffer
-
+  
+  data <- PrepForVIF(data)
+  
   vect <- 0
   for(i in 5:(length(data) - 3) ){
 #    for(j in (i + 1):(length(data) - 1) ){
@@ -112,7 +114,25 @@ Multico <- function(AllFact){
   return(data)
 }
 
-
+PrepForVIF <- function(PBLData){
+  buffer <- PBLData
+  DeleteIndex<- 0
+  RegrCoeff <- lm(buffer[,5] ? . , buffer[,5:length(buffer)])$coeff
+  for(i in 1:length(RegrCoeff)){
+    if(is.na(RegrCoeff[i])){
+      DeleteIndex <- c(DeleteIndex, i + 4)
+    }
+  }
+  
+  DeleteIndex <- DeleteIndex[-1]
+  if(length(DeleteIndex) != 0){
+    for(i in length(DeleteIndex):1){
+      buffer <- buffer[,-DeleteIndex[i]]
+    }
+  }
+  
+  return(buffer)
+}
 
 #‚RDH”‚ÆŠe•Ï“®—vˆö‚Ì•Ï”‚ÌŠÔ‚Ì‰ñ‹AŒW”‚ð‹‚ß‚é
 #‰ñ‹AŒW”‚Ílm(formula, data)‚ð—p‚¢‚é
