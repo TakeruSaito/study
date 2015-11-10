@@ -80,20 +80,21 @@ Multico <- function(AllFact){
 #    for(j in (i + 1):(length(data) - 1) ){
     x <- 0
     loop <- floor( (length(data) - i)/3 )
-
-    for(j in 1:loop ){
+    for(j in 1:(loop) ){
 #      x <- abs( cor(data[,i] , data[,j]) );
       if(j >= loop){
-        x <- c(x,  vif( lm( data[,i] ? . , data[, (i + (3*j - 2)):length(data)] ) ) )
+        x <- c(x, vif( lm( data[,i] ? . , data[, (i + (3*j - 2)):length(data)] ) ) )
       }else{
-        x <- c(x,  vif( lm( data[,i] ? . , data[, i + (3*j - 2):(3*j) ] ) ) )
+        x <- c(x, vif( lm( data[,i] ? . , data[, (i + (3*j - 2)):(i + (3*j))] ) ) )
       }
     }
     x <- x[-1]
     
     for(k in 1:length(x)){
-      if(is.na(x[k]) || x[k] >= 10){
-        vect <- rbind(vect, c(i,(j + k -1)))
+      if(length(x) != 0){
+        if(is.na(x[k]) || x[k] >= 10){
+          vect <- rbind(vect, c(i,(j + k -1)))
+        }
       }
     }
   }
@@ -120,7 +121,7 @@ PrepForVIF <- function(PBLData){
   RegrCoeff <- lm(buffer[,5] ? . , buffer[,5:length(buffer)])$coeff
   for(i in 1:length(RegrCoeff)){
     if(is.na(RegrCoeff[i])){
-      DeleteIndex <- c(DeleteIndex, i + 4)
+      DeleteIndex <- c(DeleteIndex, i + 3)
     }
   }
   
@@ -461,8 +462,8 @@ MakeModel <- function(PBL){
   MeanRes <- 0
   MedianRes <- 0
   VarRes <- 0
-  for(i in 6:length(Data)){ #Œ©Ï‚à‚èH”‚ÌŒë·‚ðresult‚É‘ã“ü
-    result <- CrossMulti(Data[, 1:i])[, 3]
+  for(i in 6:length(multico)){ #Œ©Ï‚à‚èH”‚ÌŒë·‚ðresult‚É‘ã“ü
+    result <- CrossMulti(multico[, 1:i])[, 3]
 #    MeanRes <- c(MeanRes, mean(result))
     MedianRes <- c(MedianRes, median(result))
     VarRes <- c(VarRes, sqrt(variance(result)))
@@ -500,7 +501,7 @@ CalcManHour <- function(PBL,i){
   multico <- Multico(SortedData) #‘½düŒ`«‚ð”rœ‚·‚é
 #  ret <- StepFiveMulti(multico[-length(PBL[,1]),],multico[length(PBL[,1]),])
   num <- as.integer(names(error))+4
-
+  cat("num = ", num, ", multico = ", length(multico[1,]) )
   Study <- multico[-(i),1:num];
   Est <- multico[i, 1:num];
   ret <-  StepFiveMulti(Study, Est);
@@ -513,7 +514,7 @@ CalcManHour <- function(PBL,i){
   AandB <- rbind(AandB, ret)
   write.table(AandB[-1,], file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
   
-options(scipen=5);return (ret[3]  - error)
+options(scipen=5);return (ret[1]  - error)
 #  return(ret[,3] - error)
 #  return (length(multico))
 #  return (ret[3]- error)
@@ -522,13 +523,13 @@ options(scipen=5);return (ret[3]  - error)
 #MakeModel(PBLData)
 #CalcManHour(PBLData,3)
 #system.time(CalcManHour(PBLData))
-m <- 0
+m1 <- 0
 for(i in 1:length(PBLData[,1])){
 #  write.table(label[i], file = "output.txt", append = TRUE, quote = FALSE);
-  m <- rbind(m , CalcManHour(PBLData,i))
+  m1 <- rbind(m1 , CalcManHour(PBLData,i))
 }
-m <- m[-1]
+m1 <- m1[-1]
 
 plot(m, xaxt="n", pch = 20, xlab="projects", ylab="Error of scheduled man-hours and actual man-hours");
 axis(side = 1, at = 1:length(m), labels = label)
-text(1:length(m), m - 30, ceiling(m))
+text(1:length(m), m - 50, ceiling(m))
