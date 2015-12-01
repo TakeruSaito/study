@@ -458,7 +458,7 @@ MakeModel <- function(PBL){
   
 #  write.table(ChoiceCoeff, file = "output.txt", append = TRUE, quote = FALSE);
  write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
-  
+  write.csv(multico, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/UseMetrix.csv", quote = FALSE, col.names = FALSE)
   MeanRes <- 0
   MedianRes <- 0
   VarRes <- 0
