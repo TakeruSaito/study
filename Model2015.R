@@ -349,10 +349,10 @@ StepFiveMulti <- function(pbl, checkData){ # pbl:ŒŸ¸‘ÎÛƒvƒƒWƒFƒNƒgíœÏ‚Ý‚©‚
     sigma <- sigma + as.numeric(FactMulCoeff[i])
   }
 
+  #cat("TriAlfa", TriAlfa[2], ",  predict", predict[2], ", sigma", sigma, "?n")
   ret <- TriAlfa[2] * checkData$FPTrial * (1 + predict[2] * sigma)
   ret <- abs(ret)
   ret <- c(ret, checkData$Actual, ret - checkData$Actual, TriAlfa[2], checkData$FPTrial, predict[2], sigma)
-  
 
   return(invisible(ret)) 
 }
@@ -520,6 +520,10 @@ options(scipen=5);return (ret[1]  - error)
 #  return (ret[3]- error)
 }
 
+CalcRelativeError <- function(experiment, calculated){
+  return ( ((experiment - calculated) / calculated) * 100 )  
+}
+
 #MakeModel(PBLData)
 #CalcManHour(PBLData,3)
 #system.time(CalcManHour(PBLData))
@@ -533,3 +537,10 @@ m1 <- m1[-1]
 plot(m, xaxt="n", pch = 20, xlab="projects", ylab="Error of scheduled man-hours and actual man-hours");
 axis(side = 1, at = 1:length(m), labels = label)
 text(1:length(m), m - 50, ceiling(m))
+
+m2 <- 0
+for(i in 1:length(subset(PBLData, NewDevelopment == 1|is.na(Actual) )[,1] )){
+  #  write.table(label[i], file = "output.txt", append = TRUE, quote = FALSE);
+  m2 <- rbind(m2 , CalcManHour(subset(PBLData, NewDevelopment == 1|is.na(Actual)), i) )
+}
+m2 <- m2[-1]
