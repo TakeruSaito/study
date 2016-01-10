@@ -5,51 +5,18 @@
 #f <- lsfit(予測工数, 規模)
 #f$coefficients で表示される　Intercept  V1がy = ax + bのb,aに該当する。
 
-StepOne <- function(pbl){ #csvの元データそのまま
+CalcAlpha <- function(pbl){ #csvの元データそのまま
 
   TriAlfa <- lsfit(pbl$Estimated, pbl$FPTrial)$coeff
   AppAlfa <- lsfit(pbl$Estimated, pbl$FPApproxi)$coeff 
 
-  return (invisible(TriAlfa))
+  return (TriAlfa)
 }
 
 #２．各変動要因間の相関性を調べ、多重線形性を排除する
 #source("http://aoki2.si.gunma-u.ac.jp/R/src/tolerance.R", encoding="euc-jp")
 #をRコンソールにペーストしたのち、tolerance(x)　x：説明変数だけのデータ行列　を使う
 #tolerance(x)の出力結果のうち、toleranceの値が大きいものを削除する
-
-StepTwo <- function(AllFact){
-
-  data <- AllFact  #このAllFactは工数・規模を除いた、全調整要因
-
-  data[is.na(data)] <- 0
-  buffer <- data
-
-  for(i in 1:length(data)){
-   if(sum(data[,i]) == 0){
-     buffer <- buffer[, -i]
-   }
-  }
-
-  data <- buffer
-
-  vect <- 0
-  vname <- 0
-  for(i in 1:(length(data)-1)){
-    for(j in (i + 1):length(data)){
-      vect <- c(vect, cor(data[,i], data[,j]))
-      vname <- c(vname, paste(as.character(i), "-", as.character(j)))
-    }
-  }
-
-  vect <- vect[-1]
-  vname <- vname[-1]
-  names(vect) <- vname
-  sortList <- order(-abs(vect))
-
-  return(invisible( vect[sortList]))
-
-}
 
 #計算用に、ソートされたデータのうちいらない分を削除するように修正したStepTwo
 Multico <- function(AllFact){
@@ -119,6 +86,7 @@ PrepForVIF <- function(PBLData){
   buffer <- PBLData
   DeleteIndex<- 0
   RegrCoeff <- lm(buffer[,5] ? . , buffer[,5:length(buffer)])$coeff
+  
   for(i in 1:length(RegrCoeff)){
     if(is.na(RegrCoeff[i])){
       DeleteIndex <- c(DeleteIndex, i + 3)
@@ -140,57 +108,39 @@ PrepForVIF <- function(PBLData){
 #使い方例：lm(工数?変動要因, data=(工数と変動要因を格納した行列))
 #回帰係数はlm()を代入した変数中のCoefficientsの中、Estimate行変動要因名列の値
 
-StepThree <- function(SelectedData){
-  kaiki <- 0
-  data2 <- SelectedData　　#多重線形性を排除した全データ
-  data2[is.na(data2)] <- 0
+CalcCoeff <- function(SelectedData, type = "multi"){
+  factor <- 0
+  data <- SelectedData
+  data[is.na(data)] <- 0
   
-  for(i in 5:length(data2)){
-    kaiki <- rbind(kaiki, lm((Actual-Estimated)?data2[,i], data2)$coefficients)
+  if(type == "multi" || is.na(type)){
+    
+    library("QuantPsyc", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
+    factor <- lm.beta(lm((data$Actual - data$Estimated)?., data[-1:-4]))
+    
+  }else{
+    for(i in 5:length(data)){
+      if(type == "regression"){
+        factor <- rbind(factor, lm((Actual-Estimated)?data[,i], data)$coefficients)
+      }else if(type == "cor"){
+        factor <- rbind(factor, cor(data$Actual - data$Estimated, data[,i]))
+      }else if(type == "t"){
+        factor <- rbind(factor, t.test(data$Actual - data$Estimated, data[,i])$statistic)
+      }
+    }
+    factor <- factor[-1,]
   }
- 
-  kaiki <- kaiki[-1,]
-  kaiki[is.na(kaiki)] <- 0
-
-  kname <- names(data2)[5:length(data2)]
-  dimnames(kaiki) <- list(kname, names(kaiki[1,]))
-  return(invisible(kaiki))
-}
-
-#3.で回帰係数ではなく，相関係数を返すパターン
-StepThreeCor <- function(SelectedData){
-  soukan <- 0
-  data2 <- SelectedData
-  data2[is.na(data2)] <- 0
-
-  for(i in 5:length(data2)){
-    soukan <- rbind(soukan , cor(data2$Actual - data2$Estimated, data2[,i]))
+  factor[is.na(factor)] <- 0
+  if(type == "regression"){
+    factor <- factor[,2]
+    kname <- names(data)[5:length(data)]
+    names(factor) <- kname
+  }else if(type == "cor" || type == "t"){
+    sname <- names(data)[5:length(data)]
+    names(factor) <- sname
   }
-
-  soukan <- soukan[-1,]
-  soukan[is.na(soukan)] <- 0
-
-  sname <- names(data2)[5:length(data2)]
-  #dimnames(soukan) <- list(sname, )
-  names(soukan) <- sname
-  return (invisible(soukan))
-
+  return (factor)
 }
-
-#3．で単回帰分析ではなく，重回帰分析をした場合
-StepThreeMulti <- function(SelectedData){
-# kaiki <- 0
-  library("QuantPsyc", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")
-  data2 <- SelectedData
-  data2[is.na(data2)] <- 0
- 
-  kaiki <- lm.beta(lm((data2$Actual - data2$Estimated)?., data2[-1:-4]))
-
-  kaiki[is.na(kaiki)] <- 0
-  
-  return(invisible(kaiki))
-}
-
 
 #４．最小二乗法を用いて、見積もりモデル式を作成する
 #現在想定しているモデル式は(工数)　= α　×　FP(規模)　×　(１＋　β　×　Σ{(変動要因)　×　(各変動要因の回帰係数)})
@@ -199,202 +149,66 @@ StepThreeMulti <- function(SelectedData){
 
 #(工数)- α×FP = data$Actual - (TriAlfa[2] * data$FPTrial)
 
-StepFour <- function(data, TriAlfa, kaiki){
-
+CalcBeta <- function(data, TriAlfa, factor){
+  
   FactMulCoeff <- 0
-  for(i in 5:length(data)){ #このdataは多重線形性を排除した工数等込のプロジェクトデータ
-    FactMulCoeff <- c(FactMulCoeff, c(data[,i] * abs(kaiki[i - 4, 2])))
+  for(i in 5:length(data)){
+    FactMulCoeff <- c(FactMulCoeff, c(data[,i] * factor[i - 4]))
   }
-
-  FactMulCoeff <- FactMulCoeff[-1]
-
-  sig <- matrix(FactMulCoeff, length(data[,1]), (length(data[1,]) - 4))
-
-  sigma <- 0
-  for(i in 1:length(sig[1,])){
-    sigma <- sigma + sig[,i]
-  }
-
-  leftFormula <- data$Actual - (TriAlfa[2] * data$FPTrial)
-  rightFormula <- TriAlfa[2] * data$FPTrial * sigma
-
-  x <- data.frame(LEFT=leftFormula, RIGHT=rightFormula);
-  return( invisible(lm(leftFormula?rightFormula, data=x)$coeff ))
-
-}
-
-
-StepFourCor <- function(data, TriAlfa, soukan){
-
-  FactMulCoeff <- 0
-  for(i in 5:length(data)){ #このdataは多重線形性を排除した工数等込のプロジェクトデータ
-    FactMulCoeff <- c(FactMulCoeff, c(data[,i] * soukan[i - 4]))
-  }
-
-  FactMulCoeff <- FactMulCoeff[-1]
-
-  sig <- matrix(FactMulCoeff, length(data[,1]), (length(data[1,]) - 4))
-
-  sigma <- 0
-  for(i in 1:length(sig[1,])){
-    sigma <- sigma + sig[,i]
-  }
-
-  leftFormula <- data$Actual - (TriAlfa[2] * data$FPTrial)
-  rightFormula <- TriAlfa[2] * data$FPTrial * sigma
-
-  x <- data.frame(LEFT=leftFormula, RIGHT=rightFormula);
-  return( invisible(lm(leftFormula?rightFormula, data=x)$coeff ))
-
-}
-
-
-StepFourMulti <- function(data, TriAlfa, kaiki){
-
-  FactMulCoeff <- 0
-  for(i in 5:length(data)){ #このdataは多重線形性を排除した工数等込のプロジェクトデータ
-    FactMulCoeff <- c(FactMulCoeff, c(data[,i] * kaiki[i - 4]))
-  }
-
+  
   FactMulCoeff <- FactMulCoeff[-1]
   
   sig <- matrix(FactMulCoeff, length(data[,1]), (length(data[1,]) - 4))
-
+  
   sigma <- 0
   for(i in 1:length(sig[1,])){
     sigma <- sigma + sig[,i]
   }
-
+  
   leftFormula <- data$Actual - (TriAlfa[2] * data$FPTrial)
   rightFormula <- TriAlfa[2] * data$FPTrial * sigma
-
-  x <- data.frame(LEFT=leftFormula, RIGHT=rightFormula);
   
-  return( invisible(lm(leftFormula?rightFormula, data=x)$coeff ))
-
+  x <- data.frame(LEFT=leftFormula, RIGHT=rightFormula);
+  return( lm(leftFormula?rightFormula, data=x)$coeff )
 }
 
 #５．クロスバリデーションで推定精度を算出する。
 #Rでのクロスバリデーションのメソッドはあるようだが、使い方がわからんので、最悪手打ちで
 
-StepFive <- function(pbl, checkData){ # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
-  TriAlfa <- StepOne(pbl)
+CalcPriMH <- function(pbl, checkData, type = "multi"){ # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
+  alpha <- CalcAlpha(pbl)
   pbl <- Choice(pbl)
-  kaiki <- abs(StepThree(pbl))
-  predict <- StepFour(pbl, TriAlfa, kaiki)
+  factor <- abs(CalcCoeff(pbl, type))
+  predict <- CalcBeta(pbl, alpha, factor)
   FactMulCoeff <- 0
-
+  
   for(i in 5:length(pbl)){ 
-    FactMulCoeff <- c(FactMulCoeff, c(checkData[i] * kaiki[i - 4, 2]))
+    FactMulCoeff <- c(FactMulCoeff, c(checkData[i] * factor[i - 4]))
   }
-
+  
   FactMulCoeff <- FactMulCoeff[-1]
   sigma <- 0
   for(i in 1:length(FactMulCoeff)){
     sigma <- sigma + as.numeric(FactMulCoeff[i])
   }
-
-#  sig <- matrix(FactMulCoeff, length(pbl[,1]), (length(pbl[1,]) - 4))
-
-#  sigma <- 0
-#  for(i in 1:length(sig[1,])){
-#    sigma <- sigma + sig[,i]
-#  }
-
-  ret <- TriAlfa[2] * checkData$FPTrial * (1 + predict[2] * sigma)
+  
+  ret <- alpha [2] * checkData$FPTrial * (1 + predict[2] * sigma)
   ret <- abs(ret)
-  ret <- c(ret, checkData$Actual, ret - checkData$Actual, TriAlfa[2], checkData$FPTrial, predict[2], sigma)
-  return(invisible(ret)) 
+  ret <- c(ret, checkData$Actual, ret - checkData$Actual, alpha[2], checkData$FPTrial, predict[2], sigma)
+  return(ret) 
 }
 
-
-StepFiveCor <- function(pbl, checkData){ # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
-  TriAlfa <- StepOne(pbl)
-  pbl <- Choice(pbl)
-  soukan <- StepThreeCor(pbl)
-  predict <- StepFourCor(pbl, TriAlfa, soukan)
-  FactMulCoeff <- 0
-
-  for(i in 5:length(pbl)){ 
-    FactMulCoeff <- c(FactMulCoeff, c(checkData[i] * soukan[i - 4]))
-  }
-
-  FactMulCoeff <- FactMulCoeff[-1]
-  sigma <- 0
-  for(i in 1:length(FactMulCoeff)){
-    sigma <- sigma + as.numeric(FactMulCoeff[i])
-  }
-
-  ret <- TriAlfa[2] * checkData$FPTrial * (1 + predict[2] * sigma)
-  ret <- abs(ret)
-  ret <- c(ret, checkData$Actual, ret - checkData$Actual, TriAlfa[2], checkData$FPTrial, predict[2], sigma)
-  return(invisible(ret)) 
-}
-
-
-StepFiveMulti <- function(pbl, checkData){ # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
-  TriAlfa <- StepOne(pbl)
-  pbl <- Choice(pbl)
-  kaiki <- StepThreeMulti(pbl)
-  predict <- StepFourMulti(pbl, TriAlfa, kaiki)
-  FactMulCoeff <- 0
-
-  for(i in 5:length(pbl)){ 
-    FactMulCoeff <- c(FactMulCoeff, c(checkData[i] * kaiki[i - 4]))
-  }
-
-  FactMulCoeff <- FactMulCoeff[-1]
-  sigma <- 0
-  for(i in 1:length(FactMulCoeff)){
-    sigma <- sigma + as.numeric(FactMulCoeff[i])
-  }
-
-  #cat("TriAlfa", TriAlfa[2], ",  predict", predict[2], ", sigma", sigma, "?n")
-  ret <- TriAlfa[2] * checkData$FPTrial * (1 + predict[2] * sigma)
-  ret <- abs(ret)
-  ret <- c(ret, checkData$Actual, ret - checkData$Actual, TriAlfa[2], checkData$FPTrial, predict[2], sigma)
-
-  return(invisible(ret)) 
-}
-
-
-Cross <- function(pblData){ #pblDataは多重線形性排除済みの全プロジェクトデータ
-　　ret <- 0; 
-
+CrossValid <- function(pblData, type = "multi"){
+  ret <- 0;
+  
   for(i in 1:length(pblData[,1])){
     Study <- pblData[-(i),];
-    Est <- pblData[i, ];
-    ret <-  rbind(ret, StepFive(Study, Est));
+    Est <- pblData[i,];
+    ret <- rbind(ret, CalcPriMH(Study, Est, type))
   }
   ret <- ret[-1,]
-  return(ret)
+  return (ret)
 }
-
-CrossCor <- function(pblData){ #pblDataは多重線形性排除済みの全プロジェクトデータ
-　　ret <- 0; 
-
-  for(i in 1:length(pblData[,1])){
-    Study <- pblData[-(i),];
-    Est <- pblData[i, ];
-    ret <-  rbind(ret, StepFiveCor(Study, Est));
-  }
-  ret <- ret[-1,]
-  return(ret)
-}
-
-
-CrossMulti <- function(pblData){ #pblDataは多重線形性排除済みの全プロジェクトデータ
-　　ret <- 0; 
-
-  for(i in 1:length(pblData[,1])){
-    Study <- pblData[-(i),];
-    Est <- pblData[i, ];
-    ret <-  rbind(ret, StepFiveMulti(Study, Est));
-  }
-  ret <- ret[-1,]
-  return(ret)
-}
-
 
 Choice <- function(pbl){ #多重線形性排除済みの全データ
 　　Data <- pbl; Data[is.na(Data)] <- 0 #欠損値を排除
@@ -411,18 +225,10 @@ Choice <- function(pbl){ #多重線形性排除済みの全データ
   ret <- Data
   s <- c(1:4); sortList <- c(s, sortList+4)
   ret <- ret[sortList]
-  return(invisible(ret))
+  return(ret)
 }
 
-#plot(SecondResult[SecondSortList,3], xaxt="n", xlab="" , ylab="")
-#axis(1,at=1:11, labels=label[SecondSortList])
-#abline(SecondMean, 0, col="blue")
-
-#plot(SecondResult[SecondSortList,3], xaxt="n", xlab="" , ylab="")
-#axis(1,at=1:11, labels=label[SecondSortList])
-#abline(Secondmedian, 0, col="red")
-
-ChoiceMKtwo <- function(pbl){ #多重線形性排除済みの全データ
+ChoiceValues <- function(pbl){ #多重線形性排除済みの全データ
 　　Data <- pbl; Data[is.na(Data)] <- 0 #欠損値を排除
   ret <- 0 #返り値用の変数
 
@@ -435,14 +241,13 @@ ChoiceMKtwo <- function(pbl){ #多重線形性排除済みの全データ
 
   sortList <- order(-abs(ret)) #大きい順にソート
 
-  return(invisible(ret))
+  return(ret)
 }
 
-
-Bunsan <- function(Data){
+Bunsan <- function(Data, type = "multi"){
   ret <- 0
   for(i in 6:length(Data)){
-    ret <- c(ret , sqrt(variance(CrossMulti(Data[,1:i])[,3])))
+    ret <- c(ret , sqrt(variance(CrossValid(Data[,1:i])[,3], type)))
   }
   #ret <- ret[-1]
   return (ret)
@@ -450,9 +255,9 @@ Bunsan <- function(Data){
 
 variance <- function(x) var(x)*(length(x)-1)/length(x)
 
-MakeModel <- function(PBL){
+MakeModel <- function(PBL, type = "multi"){
   SortedData <- Choice(PBL) #工数変動要因を工数誤差との相関係数の高い順にソート
-  ChoiceCoeff <- ChoiceMKtwo(PBL) #各変動要因の相関係数を代入
+  ChoiceCoeff <- ChoiceValues(PBL) #各変動要因の相関係数を代入
   
   multico <- Multico(SortedData) #多重線形性を排除する
   
@@ -463,7 +268,7 @@ MakeModel <- function(PBL){
   MedianRes <- 0
   VarRes <- 0
   for(i in 6:length(multico)){ #見積もり工数の誤差をresultに代入
-    result <- CrossMulti(multico[, 1:i])[, 3]
+    result <- CrossValid(multico[, 1:i], type)[, 3]
 #    MeanRes <- c(MeanRes, mean(result))
     MedianRes <- c(MedianRes, median(result))
     VarRes <- c(VarRes, sqrt(variance(result)))
@@ -493,40 +298,36 @@ MakeModel <- function(PBL){
   return (MedianRes[1])
 }
 
-CalcManHour <- function(PBL,i){
+CalcManHour <- function(PBL,i, type = "multi"){
 #  error <- MakeModel(PBL[-length(PBL[,1]),])
 
-  error <- MakeModel(PBL)
+  error <- MakeModel(PBL, type)
   SortedData <- Choice(PBL)
+  cat("SourtedData:", length(SortedData[,1]) )
   multico <- Multico(SortedData) #多重線形性を排除する
 #  ret <- StepFiveMulti(multico[-length(PBL[,1]),],multico[length(PBL[,1]),])
   num <- as.integer(names(error))+4
-  cat("num = ", num, ", multico = ", length(multico[1,]) )
+  cat("num = ", num, ", multico = ", length(multico[1,]) ,"?n")
   Study <- multico[-(i),1:num];
   Est <- multico[i, 1:num];
-  ret <-  StepFiveMulti(Study, Est);
+  
+  ret <-  CalcPriMH(Study, Est, type);
   
 #  names(ret) <- c("Estimate", "Actual","Error" , "Alfa", "FPTrial", "predict", "Sigma");
 #  write.table(ret, file = "output.txt", append = TRUE, quote = FALSE);
 #  write.table(ret, file = "SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
-  names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
+#  names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
   AandB <- 0
   AandB <- rbind(AandB, ret)
   write.table(AandB[-1,], file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
   
-options(scipen=5);return (ret[1]  - error)
-#  return(ret[,3] - error)
-#  return (length(multico))
-#  return (ret[3]- error)
+  options(scipen=5);return (ret[1]  - error)
 }
 
 CalcRelativeError <- function(experiment, calculated){
   return ( ((experiment - calculated) / calculated) * 100 )  
 }
 
-#MakeModel(PBLData)
-#CalcManHour(PBLData,3)
-#system.time(CalcManHour(PBLData))
 m1 <- 0
 for(i in 1:length(PBLData[,1])){
 #  write.table(label[i], file = "output.txt", append = TRUE, quote = FALSE);
@@ -539,8 +340,8 @@ axis(side = 1, at = 1:length(m), labels = label)
 text(1:length(m), m - 50, ceiling(m))
 
 m2 <- 0
-for(i in 1:length(subset(PBLData, NewDevelopment == 1|is.na(Actual) )[,1] )){
+for(i in 1:length(PBLData[,1])){
   #  write.table(label[i], file = "output.txt", append = TRUE, quote = FALSE);
-  m2 <- rbind(m2 , CalcManHour(subset(PBLData, NewDevelopment == 1|is.na(Actual)), i) )
+  m2 <- rbind(m2 , CalcManHour(PBLData,i, type = "t") )
 }
 m2 <- m2[-1]
