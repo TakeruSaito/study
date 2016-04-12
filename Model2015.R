@@ -125,7 +125,7 @@ CalcCoeff <- function(SelectedData, type = "multi"){
       }else if(type == "cor"){
         factor <- rbind(factor, cor(data$Actual - data$Estimated, data[,i]))
       }else if(type == "t"){
-        factor <- rbind(factor, t.test(data$Actual - data$Estimated, data[,i])$statistic)
+        factor <- rbind(factor, t.test(data$Actual - data$Estimated, data[,i], paired = TRUE)$statistic)
       }
     }
     factor <- factor[-1,]
@@ -262,7 +262,7 @@ MakeModel <- function(PBL, type = "multi"){
   multico <- Multico(SortedData) #‘½düŒ`«‚ð”rœ‚·‚é
   
 #  write.table(ChoiceCoeff, file = "output.txt", append = TRUE, quote = FALSE);
- write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
+  write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
   write.csv(multico, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/UseMetrix.csv", quote = FALSE, col.names = FALSE)
   MeanRes <- 0
   MedianRes <- 0
@@ -319,7 +319,7 @@ CalcManHour <- function(PBL,i, type = "multi"){
 #  names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
   AandB <- 0
   AandB <- rbind(AandB, ret)
-  write.table(AandB[-1,], file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
+  write.table(t(AandB[-1,]), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
   
   options(scipen=5);return (ret[1]  - error)
 }
