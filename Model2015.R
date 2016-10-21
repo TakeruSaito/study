@@ -175,7 +175,7 @@ CalcBeta <- function(data, TriAlfa, factor){
 #５．クロスバリデーションで推定精度を算出する。
 #Rでのクロスバリデーションのメソッドはあるようだが、使い方がわからんので、最悪手打ちで
 
-CalcPriMH <- function(pbl, checkData, type = "multi"){
+CalcPriMH <- function(pbl, checkData, type = "multi", mode = "default"){
   # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
   alpha <- CalcAlpha(pbl)
   
@@ -183,6 +183,10 @@ CalcPriMH <- function(pbl, checkData, type = "multi"){
   
   factor <- abs(CalcCoeff(pbl, type))
   
+  if(mode == "debug"){
+    write.table(rownames(checkData), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/Factors.csv", append = TRUE, quote = FALSE,sep = ",")
+    write.table(t(factor), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/Factors.csv", append = TRUE, quote = FALSE,sep = ",")
+  }
   predict <- CalcBeta(pbl, alpha, factor)
   
   FactMulCoeff <- 0
@@ -319,15 +323,13 @@ CalcManHour <- function(PBL,i, type = "multi"){
   Study <- multico[-(i),1:num];
   Est <- multico[i, 1:num];
   
-  ret <-  CalcPriMH(Study, Est, type);
+  ret <-  CalcPriMH(Study, Est, type, mode = "debug");
   
-#  names(ret) <- c("Estimate", "Actual","Error" , "Alfa", "FPTrial", "predict", "Sigma");
-#  write.table(ret, file = "output.txt", append = TRUE, quote = FALSE);
-#  write.table(ret, file = "SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
-#  names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
+  names(ret) <- c("Estimate", "Actual","Error" , "Alfa", "FPTrial", "predict", "Sigma");
   AandB <- 0
   AandB <- rbind(AandB, ret)
-  write.table(t(AandB[-1,]), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
+  #writeLines(paste(i), "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv")
+  #write.table(t(AandB[-1,]), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE,sep = ",")
   
   options(scipen=5);return (ret[1]  - error)
 }
@@ -345,6 +347,7 @@ CalcTestData <- function(PBLData, type = "multi"){
   ret <- ret[-1]
   return(ret)
 }
+
 
 m1 <- 0
 for(i in 1:length(PBLData[,1])){
