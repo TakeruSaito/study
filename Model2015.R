@@ -175,17 +175,26 @@ CalcBeta <- function(data, TriAlfa, factor){
 #５．クロスバリデーションで推定精度を算出する。
 #Rでのクロスバリデーションのメソッドはあるようだが、使い方がわからんので、最悪手打ちで
 
-CalcPriMH <- function(pbl, checkData, type = "multi"){ # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
+CalcPriMH <- function(pbl, checkData, type = "multi", mode = "default"){
+  # pbl:検査対象プロジェクト削除済みかつ多重線形性排除済みの全データ
   alpha <- CalcAlpha(pbl)
+  
   pbl <- Choice(pbl)
+  
   factor <- abs(CalcCoeff(pbl, type))
+  
+  if(mode == "debug"){
+    write.table(rownames(checkData), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/Factors.csv", append = TRUE, quote = FALSE,sep = ",")
+    write.table(t(factor), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/Factors.csv", append = TRUE, quote = FALSE,sep = ",")
+  }
   predict <- CalcBeta(pbl, alpha, factor)
+  
   FactMulCoeff <- 0
   
-  for(i in 5:length(pbl)){ 
+  for(i in 5:length(pbl)){
     FactMulCoeff <- c(FactMulCoeff, c(checkData[i] * factor[i - 4]))
   }
-  
+
   FactMulCoeff <- FactMulCoeff[-1]
   sigma <- 0
   for(i in 1:length(FactMulCoeff)){
@@ -257,18 +266,21 @@ variance <- function(x) var(x)*(length(x)-1)/length(x)
 
 MakeModel <- function(PBL, type = "multi"){
   SortedData <- Choice(PBL) #工数変動要因を工数誤差との相関係数の高い順にソート
+  
   ChoiceCoeff <- ChoiceValues(PBL) #各変動要因の相関係数を代入
   
   multico <- Multico(SortedData) #多重線形性を排除する
   
 #  write.table(ChoiceCoeff, file = "output.txt", append = TRUE, quote = FALSE);
-  write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
-  write.csv(multico, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/UseMetrix.csv", quote = FALSE, col.names = FALSE)
+
+#  write.csv(ChoiceCoeff, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/MetrixInfluence.csv", quote = FALSE, col.names = FALSE);
+#  write.csv(multico, file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/UseMetrix.csv", quote = FALSE, col.names = FALSE)
   MeanRes <- 0
   MedianRes <- 0
   VarRes <- 0
   for(i in 6:length(multico)){ #見積もり工数の誤差をresultに代入
     result <- CrossValid(multico[, 1:i], type)[, 3]
+    
 #    MeanRes <- c(MeanRes, mean(result))
     MedianRes <- c(MedianRes, median(result))
     VarRes <- c(VarRes, sqrt(variance(result)))
@@ -300,26 +312,24 @@ MakeModel <- function(PBL, type = "multi"){
 
 CalcManHour <- function(PBL,i, type = "multi"){
 #  error <- MakeModel(PBL[-length(PBL[,1]),])
-
+  
   error <- MakeModel(PBL, type)
   SortedData <- Choice(PBL)
-  cat("SourtedData:", length(SortedData[,1]) )
+  
   multico <- Multico(SortedData) #多重線形性を排除する
 #  ret <- StepFiveMulti(multico[-length(PBL[,1]),],multico[length(PBL[,1]),])
   num <- as.integer(names(error))+4
-  cat("num = ", num, ", multico = ", length(multico[1,]) ,"?n")
+  
   Study <- multico[-(i),1:num];
   Est <- multico[i, 1:num];
   
-  ret <-  CalcPriMH(Study, Est, type);
+  ret <-  CalcPriMH(Study, Est, type, mode = "debug");
   
-#  names(ret) <- c("Estimate", "Actual","Error" , "Alfa", "FPTrial", "predict", "Sigma");
-#  write.table(ret, file = "output.txt", append = TRUE, quote = FALSE);
-#  write.table(ret, file = "SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
-#  names(ret) <- c(NULL, NULL,NULL , NULL, NULL, NULL, NULL);
+  names(ret) <- c("Estimate", "Actual","Error" , "Alfa", "FPTrial", "predict", "Sigma");
   AandB <- 0
   AandB <- rbind(AandB, ret)
-  write.table(t(AandB[-1,]), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE)
+  #writeLines(paste(i), "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv")
+  #write.table(t(AandB[-1,]), file = "/Users/saitotakeru/Documents/Study/workspace/work1/SubData/HyperParameters.csv", append = TRUE, quote = FALSE,sep = ",")
   
   options(scipen=5);return (ret[1]  - error)
 }
@@ -327,6 +337,17 @@ CalcManHour <- function(PBL,i, type = "multi"){
 CalcRelativeError <- function(experiment, calculated){
   return ( ((experiment - calculated) / calculated) * 100 )  
 }
+
+CalcTestData <- function(PBLData, type = "multi"){
+  ret <- 0
+  for(i in 1:length(PBLData[,1])){
+    ret <- rbind(ret , CalcManHour(PBLData, i, type) )
+    cat( "loop : ", i, "?n")
+  }
+  ret <- ret[-1]
+  return(ret)
+}
+
 
 m1 <- 0
 for(i in 1:length(PBLData[,1])){
