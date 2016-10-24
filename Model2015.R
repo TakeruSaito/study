@@ -348,6 +348,32 @@ CalcTestData <- function(PBLData, type = "multi"){
   return(ret)
 }
 
+SearchProbPoint <- function(PBLData, type = "multi", filename){
+  palam.num <- length(PBLData[1,])
+  palam.first <- 5
+  
+  for(i in pala.first:palam.num){
+    palam.name <- labels(PBLData)[[2]][i]
+    result.data <- CalcTestData(PBLData[, -1])
+    result.rmse <- RMSE(result.data, PBLData$Actual)
+    result.rrmse <- RMS(CalcRelativeError(PBLData$Actual, result.data))
+    write.csv(list(target = palam.name, rmse = result.rmse, relative_error = result.rrmse, results = result.data), file = "data/test.csv", quote = FALSE, row.names = FALSE)
+  }
+  return(0);
+}
+
+#生データをダミー変数化させるメソッド
+MakeDummy <- function(RawPBLData){
+  library(caret)
+  library(ggplot2)
+  tmp <- dummyVars(?., data=RawPBLData)
+  PBLData.dummy <- as.data.frame(predict(tmp, RawPBLData))
+  return(PBLData.dummy)
+}
+
+RMS <- function(data){
+  return( mean(sqrt(data^2)) )
+}
 
 m1 <- 0
 for(i in 1:length(PBLData[,1])){
