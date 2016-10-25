@@ -352,12 +352,14 @@ SearchProbPoint <- function(PBLData, type = "multi", filename){
   palam.num <- length(PBLData[1,])
   palam.first <- 5
   
+  write.csv("", file = filename, quote = FALSE, row.names = FALSE)
+  
   for(i in pala.first:palam.num){
     palam.name <- labels(PBLData)[[2]][i]
     result.data <- CalcTestData(PBLData[, -1])
     result.rmse <- RMSE(result.data, PBLData$Actual)
     result.rrmse <- RMS(CalcRelativeError(PBLData$Actual, result.data))
-    write.csv(list(target = palam.name, rmse = result.rmse, relative_error = result.rrmse, results = result.data), file = "data/test.csv", quote = FALSE, row.names = FALSE)
+    write.csv(list(target = palam.name, rmse = result.rmse, relative_error = result.rrmse, results = result.data), file = filename, append = TRUE, quote = FALSE, row.names = FALSE)
   }
   return(0);
 }
