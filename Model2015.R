@@ -340,26 +340,34 @@ CalcRelativeError <- function(experiment, calculated){
 
 CalcTestData <- function(PBLData, type = "multi"){
   ret <- 0
+  cat("CalcTestData : ")
   for(i in 1:length(PBLData[,1])){
     ret <- rbind(ret , CalcManHour(PBLData, i, type) )
-    cat( "loop : ", i, "?n")
+    cat(i, ", ")
   }
   ret <- ret[-1]
+  cat("?n");
   return(ret)
 }
 
 SearchProbPoint <- function(PBLData, type = "multi", filename){
-  palam.num <- length(PBLData[1,])
   palam.first <- 5
+  palam.num <- length(PBLData[1,])
   
-  write.csv("", file = filename, quote = FALSE, row.names = FALSE)
+  write.csv("", file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
   
-  for(i in pala.first:palam.num){
+  for(i in palam.first:palam.num){
     palam.name <- labels(PBLData)[[2]][i]
-    result.data <- CalcTestData(PBLData[, -1])
-    result.rmse <- RMSE(result.data, PBLData$Actual)
+    result.data <- CalcTestData(PBLData[, -i])
+    result.errors <- result.data - PBLData$Actual
+ #   result.rmse <- RMSE(result.data, PBLData$Actual)
     result.rrmse <- RMS(CalcRelativeError(PBLData$Actual, result.data))
-    write.csv(list(target = palam.name, rmse = result.rmse, relative_error = result.rrmse, results = result.data), file = filename, append = TRUE, quote = FALSE, row.names = FALSE)
+    if(i == palam.first){
+      write.table(list(target = palam.name,  relative_error = result.rrmse, results_mean = mean(result.errors), results_median = median(result.errors) ), file = filename, sep = ",",append = TRUE, quote = FALSE, row.names = FALSE)
+    }else{
+      write.table(list(target = palam.name,  relative_error = result.rrmse, results_mean = mean(result.errors), results_median = median(result.errors) ), file = filename, sep = ",",append = TRUE, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    }
+    cat("SearchProbPoint:", i, "?n");
   }
   return(0);
 }
