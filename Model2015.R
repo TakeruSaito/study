@@ -381,8 +381,26 @@ MakeDummy <- function(RawPBLData){
   return(PBLData.dummy)
 }
 
+#“ñð•½‹Ï•½•ûª‚ðŒvŽZ
 RMS <- function(data){
   return( mean(sqrt(data^2)) )
+}
+
+#
+DataSetSplit <- function(Dataset){
+  mini <- 0
+  normal <- 0
+  Dataset[is.na(Dataset)] <- 0
+  for(i in 1:length(Dataset[,1])){
+    if((Dataset$Actual[i] / Dataset$Num[i]) < 10){
+      mini <- rbind(mini, Dataset[i,])
+    }else{
+      normal <- rbind(normal, Dataset[i,])
+    }
+  }
+  mini <- mini[-1,]
+  normal <- normal[-1,]
+  return( list(mini=mini, normal=normal) )
 }
 
 m1 <- 0
